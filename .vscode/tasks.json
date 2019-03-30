@@ -1,0 +1,53 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "make",
+            "type": "shell",
+            "command": "cmake --build build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "dedicated",
+                "clear": true
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "switch to release",
+            "type": "shell",
+            "command": "cmake -DCMAKE_BUILD_TYPE=RELEASE --build build",
+            "problemMatcher": []
+        },
+        {
+            "label": "switch to debug",
+            "type": "shell",
+            "command": "cmake -DCMAKE_BUILD_TYPE=DEBUG --build build",
+            "problemMatcher": []
+        },
+        {
+            "label": "activate tests",
+            "type": "shell",
+            "command": "cmake -DWITH_TESTS=ON --build build",
+            "problemMatcher": []
+        },
+        {
+            "label": "deactivate tests",
+            "type": "shell",
+            "command": "cmake -DWITH_TESTS=OFF --build build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Reset cmake",
+            "type": "shell",
+            "command": "rm -rf build && mkdir build && cd build && CXX=/usr/bin/clang++-8 CC=/usr/bin/clang-8 cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DGTEST_DIR=$HOME/src/googletest -DWITH_TESTS=ON -DCMAKE_BUILD_TYPE=RELEASE",
+            "problemMatcher": []
+        }
+    ]
+}
