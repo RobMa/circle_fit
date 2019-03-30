@@ -1,0 +1,5 @@
+inline void calculate_Q3(const double Mx, const double My, const double Mz, const double Mxx, const double Mxy, const double Mxz, const double Myy, const double Myz, const double Mzz, const double n, Vec4& Q3_out)
+{{
+{code}
+}}
+

@@ -1,0 +1,5 @@
+inline void calculate_M_C(const double Mx, const double My, const double Mz, const double Mxx, const double Mxy, const double Mxz, const double Myy, const double Myz, const double Mzz, double n, Mat4& M_out, Mat4& C_out)
+{{
+{code}
+}}
+
