@@ -46,8 +46,14 @@
         {
             "label": "Reset cmake",
             "type": "shell",
-            "command": "rm -rf build && mkdir build && cd build && CXX=/usr/bin/clang++-8 CC=/usr/bin/clang-8 cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DGTEST_DIR=$HOME/src/googletest -DWITH_TESTS=ON -DCMAKE_BUILD_TYPE=RELEASE",
-            "problemMatcher": []
+            "command": "rm -rf build && mkdir build && cd build && conan install .. -b missing && cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DWITH_TESTS=ON -DCMAKE_BUILD_TYPE=RELEASE",
+            "problemMatcher": [],
+            "options": {
+                "env":{
+                    "CC": "/usr/bin/clang-8",
+                    "CXX": "/usr/bin/clang++-8"
+                }
+            }
         }
     ]
 }

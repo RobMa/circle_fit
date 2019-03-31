@@ -1,15 +1,9 @@
-#define BOOST_TEST_MODULE Test GWAF Taubin
-#include <boost/test/included/unit_test.hpp>
-#include <boost/test/data/test_case.hpp>
-#include <boost/test/data/monomorphic.hpp>
-namespace bdata = boost::unit_test::data;
-namespace tt = boost::test_tools;
-
-#include <cstdlib>
+#define CATCH_CONFIG_MAIN
+#include <catch2/catch.hpp>
 #include <circle_fit/gwaf_taubin.h>
 using namespace circle_fit;
 
-BOOST_AUTO_TEST_CASE( simple_test )
+TEST_CASE( "simple_test" )
 {
     const double gt_r = 1000, gt_x = 10000, gt_y = -.012;
     const int number_of_values = 3;
@@ -19,9 +13,9 @@ BOOST_AUTO_TEST_CASE( simple_test )
     NormalizedDataset data_norm(x, y);
     CircleParams est = gwaf_taubin::estimate_circle(data_norm);
     circle_undo_normalization(data_norm, est);
-    BOOST_TEST(est.r == gt_r, tt::tolerance(1e-6));
-    BOOST_TEST(est.x == gt_x, tt::tolerance(1e-6));
-    BOOST_TEST(est.y == gt_y, tt::tolerance(1e-6));
+    REQUIRE(est.r == Approx(gt_r).epsilon(1e-6));
+    REQUIRE(est.x == Approx(gt_x).epsilon(1e-6));
+    REQUIRE(est.y == Approx(gt_y).epsilon(1e-6));
 }
 
 

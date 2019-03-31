@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.0)
 project(circle_fit)
+
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+conan_basic_setup(TARGETS)
+
 add_compile_options(-std=c++17 -Wall -Wpedantic -Werror -fverbose-asm)
-find_package(Eigen3 REQUIRED)
-find_package(glog REQUIRED)
-find_package(gflags REQUIRED)
 
 add_custom_command(
     OUTPUT ${PROJECT_SOURCE_DIR}/src/generated/lm_derivatives.hpp
@@ -33,27 +34,26 @@ set_property(SOURCE src/gwaf_taubin.cpp APPEND PROPERTY OBJECT_DEPENDS ${PROJECT
 
 target_include_directories(circle_fit PUBLIC
 include
-${EIGEN3_INCLUDE_DIR}
 )
+
 target_link_libraries(circle_fit
-glog
+CONAN_PKG::eigen
+CONAN_PKG::spdlog
 )
-
-
 
 set(WITH_TESTS "off" CACHE BOOL "Build tests (requires googletest and GTEST_DIR variable to be set)")
 if (WITH_TESTS)
     # Tests
     enable_testing()
-    # find_package(Boost REQUIRED COMPONENTS unit_test_framework)
-    add_subdirectory(${GTEST_DIR} googletest EXCLUDE_FROM_ALL)
+    # find_package(Catch2 REQUIRED CONFIG)
 
     # Common unit tests
     add_executable(test_circle_fit test/test_circle_fit.cpp)
     target_link_libraries(test_circle_fit
     circle_fit
+    CONAN_PKG::Catch2
     )
-    target_include_directories(test_circle_fit PRIVATE ${BOOST_INCLUDE_DIRS})
+    # target_include_directories(test_circle_fit PRIVATE ${BOOST_INCLUDE_DIRS})
     add_test(NAME unit_tests COMMAND test_circle_fit)
 
     # GWAF Taubin specific unit tests
@@ -63,6 +63,7 @@ if (WITH_TESTS)
 
     target_link_libraries(test_gwaf_taubin
     circle_fit
+    CONAN_PKG::Catch2
     )
     # target_include_directories(test_circle_fit PRIVATE ${BOOST_INCLUDE_DIRS})
     add_test(NAME gwaf_taubin_tests COMMAND test_gwaf_taubin)
@@ -74,10 +75,9 @@ if (WITH_TESTS)
 
     target_link_libraries(test_geo_lm
     circle_fit
-    gtest_main
-    gflags
+    CONAN_PKG::Catch2
     )
-    target_include_directories(test_circle_fit PRIVATE ${BOOST_INCLUDE_DIRS})
+    # target_include_directories(test_circle_fit PRIVATE ${BOOST_INCLUDE_DIRS})
     add_test(NAME geo_lm_tests COMMAND test_geo_lm)
 endif()
 
