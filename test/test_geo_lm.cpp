@@ -11,8 +11,8 @@ TEST_CASE("simple_test")
     Dataset data(Vec3(1, 0, -1),
                  Vec3(0, 1, 0));
     CircleParams est = geometric_lm::estimate_circle(data, init);
-    REQUIRE(est.r == Approx(gt.r));
-    REQUIRE(est.x == Approx(gt.x));
-    REQUIRE(est.y == Approx(gt.y));
+    REQUIRE(Approx(est.r).epsilon(1e-6).margin(1e-6) == gt.r);
+    REQUIRE(Approx(est.x).epsilon(1e-6).margin(1e-6) == gt.x);
+    REQUIRE(Approx(est.y).epsilon(1e-6).margin(1e-6) == gt.y);
 }
 

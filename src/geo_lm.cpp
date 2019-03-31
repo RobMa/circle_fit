@@ -1,4 +1,3 @@
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
 #include <spdlog/spdlog.h>
 #include <Eigen/Dense>
 #include <circle_fit/geo_lm.h>
