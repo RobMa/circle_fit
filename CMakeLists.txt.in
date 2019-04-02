@@ -1,0 +1,52 @@
+cmake_minimum_required(VERSION 2.8.2)
+
+project(dependency-download NONE)
+
+include(ExternalProject)
+ExternalProject_Add(spdlog
+    DOWNLOAD_COMMAND URL https://github.com/gabime/spdlog/archive/v1.3.1.tar.gz
+    DOWNLOAD_DIR "${EXTERNAL_PROJECTS_DIR}"
+    DOWNLOAD_NAME "spdlog-v1.3.1.tar.gz"
+    SOURCE_DIR "${EXTERNAL_PROJECTS_DIR}/spdlog"
+    BINARY_DIR "${CMAKE_BINARY_DIR}/spdlog-build"
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    TEST_COMMAND ""
+)
+
+ExternalProject_Add(Catch2
+    DOWNLOAD_COMMAND URL https://github.com/catchorg/Catch2/archive/v2.7.0.tar.gz
+    DOWNLOAD_DIR "${EXTERNAL_PROJECTS_DIR}"
+    DOWNLOAD_NAME "Catch2-v2.7.0.tar.gz"
+    SOURCE_DIR "${EXTERNAL_PROJECTS_DIR}/Catch2"
+    BINARY_DIR "${CMAKE_BINARY_DIR}/Catch2-build"
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    TEST_COMMAND ""
+)
+
+# ExternalProject_Add(blaze
+#     DOWNLOAD_COMMAND URL https://bitbucket.org/blaze-lib/blaze/downloads/blaze-3.5.tar.gz
+#     DOWNLOAD_DIR "${EXTERNAL_PROJECTS_DIR}"
+#     SOURCE_DIR "${EXTERNAL_PROJECTS_DIR}/blaze"
+#     BINARY_DIR "${CMAKE_BINARY_DIR}/blaze-build"
+#     CONFIGURE_COMMAND ""
+#     BUILD_COMMAND ""
+#     INSTALL_COMMAND ""
+#     TEST_COMMAND ""
+# )
+
+ExternalProject_Add(eigen
+    DOWNLOAD_COMMAND URL http://bitbucket.org/eigen/eigen/get/3.3.7.tar.bz2
+    DOWNLOAD_DIR "${EXTERNAL_PROJECTS_DIR}"
+    DOWNLOAD_NAME "eigen-3.3.7.tar.bz2"
+    SOURCE_DIR "${EXTERNAL_PROJECTS_DIR}/eigen"
+    BINARY_DIR "${CMAKE_BINARY_DIR}/eigen-build"
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    TEST_COMMAND ""
+)
+

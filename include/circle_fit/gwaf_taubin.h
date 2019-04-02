@@ -1,9 +1,6 @@
 #pragma once
 
-#include <iostream>
-#include <cmath>
-#include <Eigen/Dense>
-#include <circle_fit/common.h>
+#include <circle_fit/dataset.h>
 
 namespace circle_fit{
 

@@ -1,7 +1,9 @@
+#include <spdlog/spdlog.h>
+#include <cmath>
+#include <Eigen/SVD>
 #include <circle_fit/gwaf_taubin.h>
 
-namespace circle_fit
-{
+namespace circle_fit{
 
 template<typename Context>
 inline double newton_solver(const Context& c, const double x0 = 0, bool *converged = nullptr, const double max_iter = 12, const double abs_tol = 1e-12, const double rel_tol = 1e-12)
@@ -17,11 +19,13 @@ inline double newton_solver(const Context& c, const double x0 = 0, bool *converg
         double delta = f/f_dot;
         x -= delta;
         bool abs_tol_ok = abs_tol>0 && fabs(delta) < abs_tol;
-        const double rel_err = fabs(delta/x);
-        bool rel_tol_ok = rel_tol>0 && rel_err < rel_tol;
-        std::cout << "iter="<<iter <<", x="<<x << ", f="<<f << ", f_dot="<<f_dot << ", delta="<<delta << ", rel_err="<<rel_err <<std::endl;
+        const double delta_rel = fabs(delta/x);
+        bool rel_tol_ok = rel_tol>0 && delta_rel < rel_tol;
+        SPDLOG_DEBUG("Iteration {}, x={}, y={}, f={}, f_dot={}, delta={}, delta_rel={}", iter, x, f, f_dot, delta, delta_rel);
+        // std::cout << "iter="<<iter <<", x="<<x << ", f="<<f << ", f_dot="<<f_dot << ", delta="<<delta << ", delta_rel="<<delta_rel <<std::endl;
         if(abs_tol_ok && rel_tol_ok){
-            std::cout << "Converged after " << iter << " iterations." << std::endl;
+            SPDLOG_INFO("Converged after {} iterations, abs_err={}, delta_rel={}", iter, delta, delta_rel);
+            // std::cout << "Converged after " << iter << " iterations." << std::endl;
             if(converged != nullptr) {
                 *converged = true;
             }
@@ -32,7 +36,6 @@ inline double newton_solver(const Context& c, const double x0 = 0, bool *converg
 }
 
 struct SolvePoly3{
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Vec4 coeffs;
     SolvePoly3(const Vec4& coeffs) : coeffs{coeffs} {}
     inline void evaluate(const double x, double& f, double& f_dot) const
@@ -55,67 +58,32 @@ struct SolvePoly3{
 
 inline Vec4 compute_A(const Dataset& data)
 {
-    double n = data.n;
-    const double Mxx = data.Mxx, 
-                 Myy = data.Myy, 
-                 Mzz = data.Mzz,
-                 Mx  = data.Mx, 
-                 My  = data.My,
-                 Mz  = data.Mz, 
-                 Mxz = data.Mxz,
-                 Mxy = data.Mxy, 
-                 Myz = data.Myz;
-    
     Mat4 M; Mat4 C;
-    calculate_M_C(Mx, My, Mz, Mxx, Mxy, Mxz, Myy, Myz, Mzz, n, M, C);
+    calculate_M_C(data.Mx, data.My, data.Mz, data.Mxx, data.Mxy, data.Mxz, data.Myy, data.Myz, data.Mzz, data.n, M, C);
     Vec4 Q3;
-    calculate_Q3(Mx, My, Mz, Mxx, Mxy, Mxz, Myy, Myz, Mzz, n, Q3);
+    calculate_Q3(data.Mx, data.My, data.Mz, data.Mxx, data.Mxy, data.Mxz, data.Myy, data.Myz, data.Mzz, data.n, Q3);
 
     SolvePoly3 solve_poly3(Q3);
     bool newton_converged;
     double eta = newton_solver<SolvePoly3>(solve_poly3, 0, &newton_converged);
     if(!newton_converged) {
-        std::cout << "Warning: Newton solver did not converge." << std::endl;
+        SPDLOG_ERROR("Warning: Newton solver did not converge.");
     }
     eta = std::max(0.0, eta);
-    std::cout << "eta="<<eta<<std::endl;
+    SPDLOG_DEBUG("eta={}", eta);
     Mat4 Mdet = M - C*eta;
-    
     Eigen::JacobiSVD<Mat4> jacobi = Mdet.jacobiSvd(Eigen::ComputeFullV); // Use SVD, because FullPivLU is not robust enough to extract the nullspace!
-
+    SPDLOG_DEBUG("Smallest singular value = {}", jacobi.singularValues().bottomRightCorner());
     const auto& eigenvector = jacobi.matrixV().col(3);
     double normalization = std::sqrt(eigenvector.transpose() * C * eigenvector);
     Vec4 A = eigenvector / normalization;
     return A;
 }
 
-// inline void A_to_circle(Vec4 A_vec, double& r, double& x, double& y)
-// {
-//     const double A = A_vec[0], B = A_vec[1], C = A_vec[2], D = A_vec[3];
-//     x = -B/2.0/A;
-//     y = -C/2.0/A;
-//     r = std::sqrt(std::fabs(x*x + y*y - D/A)); // Formula in paper is wrong
-// }
-
 CircleParams gwaf_taubin::estimate_circle(const Dataset& dataset)
 {
     ABCDParams abcd; abcd.vec = compute_A(dataset);
     return CircleParams(abcd);
 }
-
-// void gwaf_taubin::estimate_circle_normalized(const VecX& x, const VecX& y, double &est_r, double& est_x, double &est_y)
-// {
-//     double mean_x = x.mean();
-//     double mean_y = y.mean();    
-//     VecX x_normalized = x.array() - mean_x;
-//     VecX y_normalized = y.array() - mean_y;
-//     double scale = std::sqrt(std::max(x_normalized.array().square().mean(), y_normalized.array().square().mean()));
-//     x_normalized /= scale;
-//     y_normalized /= scale;
-//     estimate_circle(x_normalized, y_normalized, est_r, est_x, est_y);
-//     est_r = est_r*scale;
-//     est_x = est_x*scale + mean_x;
-//     est_y = est_y*scale + mean_y;
-// }
 
 }

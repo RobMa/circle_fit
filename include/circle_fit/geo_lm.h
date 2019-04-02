@@ -1,5 +1,5 @@
 #pragma once
-#include <circle_fit/common.h>
+#include <circle_fit/dataset.h>
 
 namespace circle_fit{
 

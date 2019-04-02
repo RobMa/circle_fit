@@ -1,5 +1,5 @@
 {
-    "C_Cpp.intelliSenseEngineFallback": "Disabled",
+    "C_Cpp.intelliSenseEngineFallback": "Enabled",
     "files.associations": {
         "core": "cpp",
         "cctype": "cpp",
@@ -53,7 +53,16 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "utility": "cpp",
-        "*.template": "cpp"
+        "*.template": "cpp",
+        "dense": "cpp",
+        "jacobi": "cpp",
+        "alignedvector3": "cpp"
     },
-    "C_Cpp.intelliSenseEngine": "Default"
+    "C_Cpp.intelliSenseEngine": "Default",
+    "files.watcherExclude": {
+        "build/**": true,
+        "extern/**": true,
+        "__pycache__/**": true
+    },
+    "files.useExperimentalFileWatcher": false
 }

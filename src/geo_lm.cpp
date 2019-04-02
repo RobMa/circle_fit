@@ -94,11 +94,6 @@ CircleParams geometric_lm::estimate_circle(const Dataset& data, const CirclePara
         bool iteration_ok = E < E_previous && update_ok;
         SPDLOG_DEBUG("Iteration {0}: OK, E={1}, mu={2}, A={3}, D={4}, Theta={5}, det|H|={6}, ||grad E||={7}", iteration_ok?"OK":"FAIL", E, mu, omega.A(), omega.D(), omega.Theta(), H.determinant(), gradient.norm());
         if(iteration_ok) {
-            if(E < tolerance) {
-                SPDLOG_DEBUG("Converged after {0} iterations.", iter);
-                if(converged != nullptr) *converged = true;
-                break;
-            }
             E_previous = E;
             omega_previous = omega;
             gradient_previous = gradient;
@@ -113,11 +108,15 @@ CircleParams geometric_lm::estimate_circle(const Dataset& data, const CirclePara
             mu *= sigma;
             iter++;
             if(mu > mu_max) {
-                SPDLOG_ERROR("Did not converge, because mu > mu_max.");
-                // std::cerr << "Did not converge, because mu > mu_max." << std::endl;
+                SPDLOG_ERROR("Aborted, because mu > mu_max.");
                 break;
             }
-        }     
+        }
+        if(E < tolerance) {
+            SPDLOG_DEBUG("Converged after {0} iterations.", iter);
+            if(converged != nullptr) *converged = true;
+            break;
+        }  
     }
     SPDLOG_INFO("Stopped after {0} iterations, E={1}", iter, E);
     CircleParams circle(omega);

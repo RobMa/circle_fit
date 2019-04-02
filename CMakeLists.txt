@@ -1,11 +1,21 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.3)
 project(circle_fit)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+add_compile_options(-Wall -Wpedantic -Werror)
 
-include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup(TARGETS)
+# Download and unpack external dependencies
+set(EXTERNAL_PROJECTS_DIR "${PROJECT_SOURCE_DIR}/extern")
+configure_file(CMakeLists.txt.in external-projects/CMakeLists.txt)
+execute_process(COMMAND "${CMAKE_COMMAND}" -G "${CMAKE_GENERATOR}" .
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/external-projects" )
+execute_process(COMMAND "${CMAKE_COMMAND}" --build .
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/external-projects" )
 
-add_compile_options(-std=c++17 -Wall -Wpedantic -Werror -fverbose-asm)
+include_directories(extern/eigen extern/spdlog/include)
 
+# Code Generation
 add_custom_command(
     OUTPUT ${PROJECT_SOURCE_DIR}/src/generated/lm_derivatives.hpp
     COMMAND python3 src/python/generate_lm_derivatives.py
@@ -21,12 +31,16 @@ add_custom_command(
     COMMENT "Generating code for Q3.hpp and M_C.hpp."
 )
 
-add_library(circle_fit STATIC
-include/circle_fit/common.h
+# Library
+add_library(circle_fit SHARED
+include/circle_fit/numeric_types.h
+include/circle_fit/dataset.h
+include/circle_fit/circle_params.h
 include/circle_fit/gwaf_taubin.h
 src/gwaf_taubin.cpp
 include/circle_fit/geo_lm.h
 src/geo_lm.cpp
+src/capi.cpp
 )
 
 set_property(SOURCE src/geo_lm.cpp APPEND PROPERTY OBJECT_DEPENDS ${PROJECT_SOURCE_DIR}/src/generated/lm_derivatives.hpp)
@@ -37,47 +51,29 @@ include
 )
 
 target_link_libraries(circle_fit
-CONAN_PKG::eigen
-CONAN_PKG::spdlog
 )
 
 set(WITH_TESTS "off" CACHE BOOL "Build tests (requires googletest and GTEST_DIR variable to be set)")
 if (WITH_TESTS)
     # Tests
     enable_testing()
-    # find_package(Catch2 REQUIRED CONFIG)
 
     # Common unit tests
     add_executable(test_circle_fit test/test_circle_fit.cpp)
-    target_link_libraries(test_circle_fit
-    circle_fit
-    CONAN_PKG::Catch2
-    )
-    # target_include_directories(test_circle_fit PRIVATE ${BOOST_INCLUDE_DIRS})
+    target_link_libraries(test_circle_fit circle_fit)
+    target_include_directories(test_circle_fit PRIVATE extern/Catch2/single_include)
     add_test(NAME unit_tests COMMAND test_circle_fit)
 
     # GWAF Taubin specific unit tests
-    add_executable(test_gwaf_taubin
-    test/test_gwaf_taubin.cpp
-    )
-
-    target_link_libraries(test_gwaf_taubin
-    circle_fit
-    CONAN_PKG::Catch2
-    )
-    # target_include_directories(test_circle_fit PRIVATE ${BOOST_INCLUDE_DIRS})
+    add_executable(test_gwaf_taubin test/test_gwaf_taubin.cpp)
+    target_link_libraries(test_gwaf_taubin circle_fit)
+    target_include_directories(test_gwaf_taubin PRIVATE extern/Catch2/single_include)
     add_test(NAME gwaf_taubin_tests COMMAND test_gwaf_taubin)
 
     # Geometric LM specific unit tests
-    add_executable(test_geo_lm
-    test/test_geo_lm.cpp
-    )
-
-    target_link_libraries(test_geo_lm
-    circle_fit
-    CONAN_PKG::Catch2
-    )
-    # target_include_directories(test_circle_fit PRIVATE ${BOOST_INCLUDE_DIRS})
+    add_executable(test_geo_lm test/test_geo_lm.cpp)
+    target_link_libraries(test_geo_lm circle_fit)
+    target_include_directories(test_geo_lm PRIVATE extern/Catch2/single_include)
     add_test(NAME geo_lm_tests COMMAND test_geo_lm)
 endif()
 

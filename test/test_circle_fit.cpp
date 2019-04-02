@@ -1,16 +1,7 @@
-// #define REQUIRE_MODULE test circle fit common
-// #include <boost/test/included/unit_test.hpp>
-// #include <boost/test/data/test_case.hpp>
-// #include <boost/test/data/monomorphic.hpp>
-// namespace bdata = boost::unit_test::data;
-// namespace tt = boost::test_tools;
-
-
-
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
 
-#include <circle_fit/common.h>
+#include <circle_fit/circle_params.h>
 using namespace circle_fit;
 
 TEST_CASE( "circle_to_abcd" )
@@ -72,23 +63,21 @@ TEST_CASE( "adtheta_test_e" )
     REQUIRE(adtheta.E() == 3.0);
 }
 
-
-
-// BOOST_DATA_TEST_CASE(
-//   circle_to_abcd_to_adtheta_to_circle,
-//   bdata::random( (bdata::distribution=std::uniform_real_distribution<float>(0.01, 1000)) )
-//       ^ bdata::random( (bdata::distribution=std::uniform_real_distribution<float>(-1000, 1000)) )
-//       ^ bdata::random( (bdata::distribution=std::uniform_real_distribution<float>(-1000, 1000)) )
-//       ^ bdata::xrange(32),
-//   r, x, y, index )
-// {
-//     CircleParams orig; orig.r = r; orig.x = x; orig.y = y;
-//     ABCDParams abcd(orig);
-//     ADThetaParams adtheta(abcd);
-//     CircleParams converted(adtheta);
-//     REQUIRE(orig.r == converted.r, tt::tolerance(1e-6));
-//     REQUIRE(orig.x == converted.x, tt::tolerance(1e-6));
-//     REQUIRE(orig.y == converted.y, tt::tolerance(1e-6));
-// }
-
+TEST_CASE("circle_to_abcd_to_adtheta_to_circle")
+{
+    using namespace Catch::Generators;
+    const auto repeats = 1000UL;
+    auto r = take(repeats, random(0.01, 1000.0));
+    auto x = take(repeats, random(-1000.0, 1000.0));
+    auto y = take(repeats, random(-1000.0, 1000.0));
+    do{
+        CircleParams orig; orig.r = r.get(); orig.x = x.get(); orig.y = y.get();
+        ABCDParams abcd(orig);
+        ADThetaParams adtheta(abcd);
+        CircleParams converted(adtheta);
+        REQUIRE(orig.r == Approx(converted.r).epsilon(1e-6).margin(1e-6));
+        REQUIRE(orig.x == Approx(converted.x).epsilon(1e-6).margin(1e-6));
+        REQUIRE(orig.y == Approx(converted.y).epsilon(1e-6).margin(1e-6));
+    }while(r.next() && x.next() && y.next());
+}
 

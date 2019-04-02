@@ -44,9 +44,9 @@
             "problemMatcher": []
         },
         {
-            "label": "Reset cmake",
+            "label": "Reset cmake!",
             "type": "shell",
-            "command": "rm -rf build && mkdir build && cd build && conan install .. -b missing && cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DWITH_TESTS=ON -DCMAKE_BUILD_TYPE=RELEASE",
+            "command": "rm -rf build && mkdir build && cd build && cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DWITH_TESTS=ON -DCMAKE_BUILD_TYPE=RELEASE",
             "problemMatcher": [],
             "options": {
                 "env":{
