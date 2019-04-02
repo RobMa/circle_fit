@@ -9,6 +9,7 @@ cd circle_fit
 mkdir build && cd build && cmake .. && cd ..
 cmake --build build
 ```
-The library depends on _Eigen3_, _spdlog_ and _Catch2_, _cmake_ will download these dependencies automatically.
+The library depends on _Eigen3_, _spdlog_ and _Catch2_.
+_cmake_ will download the dependencies automatically and store the in the `extern` folder.
 
 
