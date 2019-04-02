@@ -40,6 +40,7 @@ include/circle_fit/gwaf_taubin.h
 src/gwaf_taubin.cpp
 include/circle_fit/geo_lm.h
 src/geo_lm.cpp
+include/circle_fit/circle_fit.h
 src/capi.cpp
 )
 
