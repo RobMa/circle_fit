@@ -1,6 +1,6 @@
 void lm_derivatives(double x, double y, double A, double D, double Theta, double& d, double& d_dA, double& d_dD, double& d_dTheta, 
                     double& d_dA_dA, double& d_dA_dD, double& d_dA_dTheta, double& d_dD_dD, double& d_dD_dTheta, double& d_dTheta_dTheta )
 {{
-    {code}
+{code}
 }}
 
