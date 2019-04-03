@@ -1,6 +1,9 @@
 # circle_fit
 **circle_fit** is a least-squares circle fitting library written in C++.
 
+## Example
+![](src/python/example_animation.gif "Circle Fitting example")
+
 ## Build instructions
 Build requirements are a C++14 compiler, _cmake_ and _Python3_ for code generation.
 ```

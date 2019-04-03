@@ -21,10 +21,10 @@ inline double newton_solver(const Context& c, const double x0 = 0, bool *converg
         bool abs_tol_ok = abs_tol>0 && fabs(delta) < abs_tol;
         const double delta_rel = fabs(delta/x);
         bool rel_tol_ok = rel_tol>0 && delta_rel < rel_tol;
-        SPDLOG_DEBUG("Iteration {}, x={}, y={}, f={}, f_dot={}, delta={}, delta_rel={}", iter, x, f, f_dot, delta, delta_rel);
+        SPDLOG_DEBUG("Iteration {}, x={}, f={}, f_dot={}, delta={}, delta_rel={}", iter, x, f, f_dot, delta, delta_rel);
         // std::cout << "iter="<<iter <<", x="<<x << ", f="<<f << ", f_dot="<<f_dot << ", delta="<<delta << ", delta_rel="<<delta_rel <<std::endl;
         if(abs_tol_ok && rel_tol_ok){
-            SPDLOG_INFO("Converged after {} iterations, abs_err={}, delta_rel={}", iter, delta, delta_rel);
+            SPDLOG_INFO("Converged after {} iterations, delta_abs={}, delta_rel={}", iter, delta, delta_rel);
             // std::cout << "Converged after " << iter << " iterations." << std::endl;
             if(converged != nullptr) {
                 *converged = true;
@@ -73,7 +73,7 @@ inline Vec4 compute_A(const Dataset& data)
     SPDLOG_DEBUG("eta={}", eta);
     Mat4 Mdet = M - C*eta;
     Eigen::JacobiSVD<Mat4> jacobi = Mdet.jacobiSvd(Eigen::ComputeFullV); // Use SVD, because FullPivLU is not robust enough to extract the nullspace!
-    SPDLOG_DEBUG("Smallest singular value = {}", jacobi.singularValues().bottomRightCorner());
+    SPDLOG_DEBUG("Smallest singular value = {}", jacobi.singularValues().data()[3]);
     const auto& eigenvector = jacobi.matrixV().col(3);
     double normalization = std::sqrt(eigenvector.transpose() * C * eigenvector);
     Vec4 A = eigenvector / normalization;

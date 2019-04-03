@@ -31,6 +31,10 @@ add_custom_command(
     COMMENT "Generating code for Q3.hpp and M_C.hpp."
 )
 
+set(SPDLOG_ACTIVE_LEVEL "SPDLOG_LEVEL_OFF" CACHE STRING "Set the logging level (e.g. SPDLOG_LEVEL_DEBUG, or SPDLOG_LEVEL_OFF)")
+
+add_compile_options(-DSPDLOG_ACTIVE_LEVEL=${SPDLOG_ACTIVE_LEVEL})
+
 # Library
 add_library(circle_fit SHARED
 include/circle_fit/numeric_types.h
@@ -41,7 +45,7 @@ src/gwaf_taubin.cpp
 include/circle_fit/geo_lm.h
 src/geo_lm.cpp
 include/circle_fit/circle_fit.h
-src/capi.cpp
+src/c_interface.cpp
 )
 
 set_property(SOURCE src/geo_lm.cpp APPEND PROPERTY OBJECT_DEPENDS ${PROJECT_SOURCE_DIR}/src/generated/lm_derivatives.hpp)

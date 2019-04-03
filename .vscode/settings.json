@@ -1,5 +1,5 @@
 {
-    "C_Cpp.intelliSenseEngineFallback": "Enabled",
+    "C_Cpp.intelliSenseEngineFallback": "Disabled",
     "files.associations": {
         "core": "cpp",
         "cctype": "cpp",
@@ -56,7 +56,27 @@
         "*.template": "cpp",
         "dense": "cpp",
         "jacobi": "cpp",
-        "alignedvector3": "cpp"
+        "alignedvector3": "cpp",
+        "codecvt": "cpp",
+        "condition_variable": "cpp",
+        "hash_map": "cpp",
+        "future": "cpp",
+        "mutex": "cpp",
+        "valarray": "cpp",
+        "variant": "cpp",
+        "algorithm": "cpp",
+        "superlusupport": "cpp",
+        "adolcforward": "cpp",
+        "autodiff": "cpp",
+        "bvh": "cpp",
+        "eulerangles": "cpp",
+        "fft": "cpp",
+        "kroneckerproduct": "cpp",
+        "mprealsupport": "cpp",
+        "numericaldiff": "cpp",
+        "openglsupport": "cpp",
+        "specialfunctions": "cpp",
+        "splines": "cpp"
     },
     "C_Cpp.intelliSenseEngine": "Default",
     "files.watcherExclude": {

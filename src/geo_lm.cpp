@@ -1,6 +1,8 @@
 #include <spdlog/spdlog.h>
 #include <Eigen/Dense>
 #include <circle_fit/geo_lm.h>
+#include <Eigen/Cholesky>
+
 
 namespace circle_fit
 {
@@ -11,117 +13,219 @@ using Diag3 = Eigen::DiagonalMatrix<double,3>;
 
 void shift_origin(VecX& x, VecX& y, Vec2& origin, ADThetaParams& omega)
 {
-    double offset = 1.0 / sqrt(8.0) / std::fabs(omega.A()); // After shift: 4AD+1 = 0.5
+    double offset = x.mean();
+    SPDLOG_DEBUG("Shifting origin by x0 -= {}.", offset);
     origin[0] -= offset;
-    x = x.array() + offset;
-    
+    x = x.array() + offset;    
     CircleParams circle(omega);
     circle.x += offset;
     omega = ADThetaParams(circle);
 }
 
-bool update_state(VecX& x, VecX& y, ADThetaParams& omega, ADThetaParams& omega_pre, Vec3& gradient, Mat3& hessian, Vec2& origin, double& E) {
-    const double singularity_threshold = 0.1;
-    double singularity_val = omega.A() * omega.D() * 4.0 + 1.0;
-    if (singularity_val < 0) {
-        shift_origin(x, y, origin, omega_pre);
-        SPDLOG_DEBUG("Omega is singular: AD+1={0}, now (previous omega) AD+1={1}, origin_x={2}", singularity_val, omega_pre.A() * omega_pre.D() * 4.0 + 1.0, origin[0]);
-        return false;
-    }else if (singularity_val <= singularity_threshold) {
-        shift_origin(x, y, origin, omega);
-        SPDLOG_DEBUG("Close to singularity: pre AD+1={0}, now AD+1={1}, origin_x={2}", singularity_val, omega_pre.A() * omega_pre.D() * 4.0 + 1.0, origin[0]);
-    }
-    gradient.setZero();
-    hessian.setZero();
-    E = 0;
-    for(int i=0; i<x.size(); i++) {
-        double d, d_dA, d_dD, d_dTheta, d_dA_dA, d_dA_dD, d_dA_dTheta, d_dD_dD, d_dD_dTheta, d_dTheta_dTheta;
-        lm_derivatives(x[i], y[i], omega.A(), omega.D(), omega.Theta(), d, d_dA, d_dD, d_dTheta, d_dA_dA, d_dA_dD, d_dA_dTheta, d_dD_dD, d_dD_dTheta, d_dTheta_dTheta);
-        gradient(0) += d * d_dA;
-        gradient(1) += d * d_dD;
-        gradient(2) += d * d_dTheta;
-        hessian(0,0) += (d_dA     * d_dA     + d * d_dA_dA        );
-        hessian(0,1) += (d_dD     * d_dA     + d * d_dA_dD        );
-        hessian(0,2) += (d_dTheta * d_dA     + d * d_dA_dTheta    );
-        hessian(1,1) += (d_dD     * d_dD     + d * d_dD_dD        );
-        hessian(1,2) += (d_dTheta * d_dD     + d * d_dD_dTheta    );
-        hessian(2,2) += (d_dTheta * d_dTheta + d * d_dTheta_dTheta);
-        E += d * d;
-    }
-    const double normalization = 2 * x.size();
-    E /= normalization;
-    gradient /= normalization;
-    hessian /= normalization;
-    hessian(1,0) = hessian(0,1);
-    hessian(2,0) = hessian(0,2);
-    hessian(2,1) = hessian(1,2);
-    return true;
-}
-
-void undo_origin_shift(const Vec2& origin, CircleParams& circle) {
+inline void undo_origin_shift(const Vec2& origin, CircleParams& circle) {
     circle.x += origin[0];
     circle.y += origin[1];
 }
 
-CircleParams geometric_lm::estimate_circle(const Dataset& data, const CircleParams& init, bool *converged, const double tolerance, const int max_iter, double mu, const double sigma)
+inline CircleParams undo_origin_shift(const Vec2& origin, CircleParams&& circle) {
+    CircleParams c = std::move(circle);
+    undo_origin_shift(origin, c);
+    return c;
+}
+
+enum class SingularityStatus{
+    Singular,
+    AlmostSingular,
+    Regular
+};
+
+SingularityStatus is_singular(const ADThetaParams& omega, double threshold = 0.1)
 {
-    if(converged != nullptr) *converged = false;
-    ADThetaParams omega(init);
+    double val = omega.A() * omega.D() * 4.0 + 1.0;
+    SingularityStatus status = val > threshold ? SingularityStatus::Regular : 
+        val < 0 ? SingularityStatus::Singular : SingularityStatus::AlmostSingular;
+    if (status != SingularityStatus::Regular) {
+        SPDLOG_DEBUG("Omega is (almost) singular: 4AD+1={0}", val);
+    }
+    return status;
+}
+
+double mean_squared_error(const VecX& x, const VecX& y, const ADThetaParams& omega)
+{
+    CircleParams c(omega);
+    double mse = (((x.array()-c.x).square() + (y.array()-c.y).square()).sqrt() - c.r).square().sum() / x.size();
+    return mse;
+}
+
+void mean_squared_error_derivatives(const VecX& x, const VecX& y, const ADThetaParams& omega, double& mse_out, Vec3& gradient_out, Mat3& hessian_out)
+{
+    gradient_out.setZero();
+    hessian_out.setZero();
+    mse_out = 0;
+    for(int i=0; i<x.size(); i++) {
+        double d, d_dA, d_dD, d_dTheta, d_dA_dA, d_dA_dD, d_dA_dTheta, d_dD_dD, d_dD_dTheta, d_dTheta_dTheta;
+        lm_derivatives(x[i], y[i], omega.A(), omega.D(), omega.Theta(), d, d_dA, d_dD, d_dTheta, d_dA_dA, d_dA_dD, d_dA_dTheta, d_dD_dD, d_dD_dTheta, d_dTheta_dTheta);
+        gradient_out(0) += d * d_dA;
+        gradient_out(1) += d * d_dD;
+        gradient_out(2) += d * d_dTheta;
+        hessian_out(0,0) += (d_dA     * d_dA     + d * d_dA_dA        );
+        hessian_out(0,1) += (d_dD     * d_dA     + d * d_dA_dD        );
+        hessian_out(0,2) += (d_dTheta * d_dA     + d * d_dA_dTheta    );
+        hessian_out(1,1) += (d_dD     * d_dD     + d * d_dD_dD        );
+        hessian_out(1,2) += (d_dTheta * d_dD     + d * d_dD_dTheta    );
+        hessian_out(2,2) += (d_dTheta * d_dTheta + d * d_dTheta_dTheta);
+        // hessian_out(0,0) += (d_dA     * d_dA     ); //+ d * d_dA_dA        );
+        // hessian_out(0,1) += (d_dD     * d_dA     ); //+ d * d_dA_dD        );
+        // hessian_out(0,2) += (d_dTheta * d_dA     ); //+ d * d_dA_dTheta    );
+        // hessian_out(1,1) += (d_dD     * d_dD     ); //+ d * d_dD_dD        );
+        // hessian_out(1,2) += (d_dTheta * d_dD     ); //+ d * d_dD_dTheta    );
+        // hessian_out(2,2) += (d_dTheta * d_dTheta ); //+ d * d_dTheta_dTheta);
+        mse_out += d * d;
+    }
+    const double normalization = 1.0 / x.size();
+    mse_out *= normalization;
+    gradient_out *= normalization * 2.0; // Factor 2 comes from square derivative
+    hessian_out *= normalization * 2.0;
+    hessian_out(1,0) = hessian_out(0,1);
+    hessian_out(2,0) = hessian_out(0,2);
+    hessian_out(2,1) = hessian_out(1,2);
+}
+
+CircleParams geometric_lm::estimate_circle(const Dataset& data, const CircleParams& init, const int max_iter, double mu, const double sigma_inc, const double sigma_dec)
+{
     VecX x(data.x);
     VecX y(data.y);
-    Mat3 H;
+    ADThetaParams omega(init);
     Vec2 origin(0, 0);
-    Vec3 gradient;
-    double E;
-    if(!update_state(x, y, omega, omega, gradient, H, origin, E)) {
-        SPDLOG_ERROR("Initial circle params are singular.");
-        return init;
+    switch(is_singular(omega)){
+        case SingularityStatus::Regular:
+            break;
+        case SingularityStatus::Singular:
+            SPDLOG_ERROR("Initial circle params are singular.");
+            return init;
+        case SingularityStatus::AlmostSingular:
+            shift_origin(x, y, origin, omega);
     }
-    double E_previous = E;
-    ADThetaParams omega_previous = omega;
-    Mat3 H_previous = H;
-    Vec3 gradient_previous = gradient;
-    const double mu_max = mu * std::pow(sigma, 10); // Break after 10 failed iterations.
-    SPDLOG_DEBUG("Initial values: E={0}, mu={1}, A={2}, D={3}, Theta={4}, det|H|={5}, ||grad E||={6}", E, mu, omega.A(), omega.D(), omega.Theta(), H.determinant(), gradient.norm());
+    
+    const double mu_max = 1e20;
+    const double mu_min = 1e-20;
 
     int iter = 1;
-    while(iter <= max_iter) {
-        // Update weight
-        omega.vec.noalias() -= (H + Mat3::Identity()*mu).bdcSvd(Eigen::ComputeFullU | Eigen::ComputeFullV).solve(gradient);
+    bool converged = false;
+    double mse = 0; 
+    while(iter <= max_iter && !converged) {
+        Mat3 hessian; Vec3 gradient;
+        mean_squared_error_derivatives(x, y, omega, mse, gradient, hessian);
+        // mse = mean_squared_error(x,y,omega);
+        SPDLOG_DEBUG("Iteration {}: MSE={}, mu={}, A={}, D={}, Theta={}, det|H|={}, ||grad E||={}", 
+                    iter-1, mse, mu, omega.A(), omega.D(), omega.Theta(), hessian.determinant(), gradient.norm());
 
-        // Analyze error
-        bool update_ok = update_state(x, y, omega, omega_previous, gradient, H, origin, E);
-        bool iteration_ok = E < E_previous && update_ok;
-        SPDLOG_DEBUG("Iteration {0}: OK, E={1}, mu={2}, A={3}, D={4}, Theta={5}, det|H|={6}, ||grad E||={7}", iteration_ok?"OK":"FAIL", E, mu, omega.A(), omega.D(), omega.Theta(), H.determinant(), gradient.norm());
-        if(iteration_ok) {
-            E_previous = E;
-            omega_previous = omega;
-            gradient_previous = gradient;
-            H_previous = H;
-            iter++;
-            mu /= sigma;
-        }else
+        // Decrement mu
+        mu = std::max(mu * sigma_dec, mu_min);
+
+        while(!converged)
         {
-            omega = omega_previous;
-            gradient = gradient_previous;
-            H = H_previous;
-            mu *= sigma;
-            iter++;
-            if(mu > mu_max) {
-                SPDLOG_ERROR("Aborted, because mu > mu_max.");
+            // Increment mu
+            mu = std::min(mu * sigma_inc, mu_max);
+
+            // Update weight
+            // omega.vec.noalias() -= (H + Mat3::Identity()*mu).jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV).solve(gradient);
+            // omega.vec.noalias() -= (H + Mat3::Identity()*mu).ch().solve(gradient);
+            // omega.vec.noalias() -= Eigen::JacobiSVD<Mat3>(H + (mu*Diag3(1.0+H.diagonal()[0], 1.0+H.diagonal()[1], 1.0+H.diagonal()[2])).toDenseMatrix(), Eigen::ComputeFullV|Eigen::ComputeFullU).solve(gradient);
+            ADThetaParams omega_new;
+            Mat3 nash_offset = mu * Diag3(1.0+hessian(0,0), 1.0+hessian(1,1), 1.0+hessian(2,2));
+            omega_new.vec = omega.vec - Eigen::LLT<Mat3>(hessian + nash_offset).solve(gradient);
+            if(is_singular(omega_new) != SingularityStatus::Regular)
+            {
+                // We are moving into a singularity in parameter space.
+                // Shift the origin and try again.
+                shift_origin(x, y, origin, omega);
+                continue;
+            }
+            double mse_new = mean_squared_error(x, y, omega_new);
+            SPDLOG_TRACE("Iteration {}, mu={}, MSE_new={}, MSE_old={}", iter, mu, mse_new, mse);
+            if(mse_new < mse) {
+                omega = omega_new;
+                iter++;
                 break;
+            }else if (mu == mu_max){
+                converged = true;
             }
         }
-        if(E < tolerance) {
-            SPDLOG_DEBUG("Converged after {0} iterations.", iter);
-            if(converged != nullptr) *converged = true;
-            break;
-        }  
     }
-    SPDLOG_INFO("Stopped after {0} iterations, E={1}", iter, E);
-    CircleParams circle(omega);
-    undo_origin_shift(origin, circle);
-    return circle;
+    return undo_origin_shift(origin, CircleParams(omega));
+}
+
+using geometric_lm::IterationData;
+using geometric_lm::LmTraceData;
+
+LmTraceData geometric_lm::estimate_circle_trace(const Dataset& data, const CircleParams& init, const int max_iter, double mu, const double sigma_inc, const double sigma_dec)
+{
+    LmTraceData trace;
+    VecX x(data.x);
+    VecX y(data.y);
+    ADThetaParams omega(init);
+    Vec2 origin(0, 0);
+    switch(is_singular(omega)){
+        case SingularityStatus::Regular:
+            break;
+        case SingularityStatus::Singular:
+            SPDLOG_ERROR("Initial circle params are singular.");
+            return trace;
+        case SingularityStatus::AlmostSingular:
+            shift_origin(x, y, origin, omega);
+    }
+    
+    const double mu_max = 1e20;
+    const double mu_min = 1e-20;
+
+    int iter = 1;
+    bool converged = false;
+    double mse = 0; 
+    while(iter <= max_iter && !converged) {
+        Mat3 hessian; Vec3 gradient;
+        mean_squared_error_derivatives(x, y, omega, mse, gradient, hessian);
+        mse = mean_squared_error(x,y,omega);
+        SPDLOG_DEBUG("Iteration {}: MSE={}, mu={}, A={}, D={}, Theta={}, det|H|={}, ||grad E||={}", 
+                    iter-1, mse, mu, omega.A(), omega.D(), omega.Theta(), hessian.determinant(), gradient.norm());
+
+        // Decrement mu
+        mu = std::max(mu * sigma_dec, mu_min);
+
+        while(!converged)
+        {
+            // Increment mu
+            mu = std::min(mu * sigma_inc, mu_max);
+
+            // Update weight
+            // omega.vec.noalias() -= (H + Mat3::Identity()*mu).jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV).solve(gradient);
+            // omega.vec.noalias() -= (H + Mat3::Identity()*mu).ch().solve(gradient);
+            // omega.vec.noalias() -= Eigen::JacobiSVD<Mat3>(H + (mu*Diag3(1.0+H.diagonal()[0], 1.0+H.diagonal()[1], 1.0+H.diagonal()[2])).toDenseMatrix(), Eigen::ComputeFullV|Eigen::ComputeFullU).solve(gradient);
+            ADThetaParams omega_new;
+            Mat3 nash_offset = mu * Diag3(1.0+hessian(0,0), 1.0+hessian(1,1), 1.0+hessian(2,2));
+            omega_new.vec = omega.vec - Eigen::LLT<Mat3>(hessian + nash_offset).solve(gradient);
+            if(is_singular(omega_new) != SingularityStatus::Regular)
+            {
+                // We are moving into a singularity in parameter space.
+                // Shift the origin and try again.
+                shift_origin(x, y, origin, omega);
+                continue;
+            }
+            double mse_new = mean_squared_error(x, y, omega_new);
+            SPDLOG_TRACE("Iteration {}, mu={}, MSE_new={}, MSE_old={}", iter, mu, mse_new, mse);
+            if(mse_new < mse) {
+                omega = omega_new;
+                iter++;
+                trace.push_back(IterationData(
+                    mse, gradient, hessian, undo_origin_shift(origin, CircleParams(omega))
+                ));
+                break;
+            }else if (mu == mu_max){
+                converged = true;
+            }
+        }
+    }
+    return trace;
 }
 
 }
