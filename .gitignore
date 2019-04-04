@@ -8,4 +8,7 @@ src/generated/*.hpp
 !.vscode/tasks.json
 extern/*
 !extern/.gitkeep
+*.m~
+*.pyc
+*.pdf
 

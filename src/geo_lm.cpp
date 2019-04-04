@@ -13,7 +13,13 @@ using Diag3 = Eigen::DiagonalMatrix<double,3>;
 
 void shift_origin(VecX& x, VecX& y, Vec2& origin, ADThetaParams& omega)
 {
-    double offset = x.mean();
+    // double offset = x.array().square().mean();
+    double offset = 1;
+    if(omega.A() != 0) {
+        offset = 1.0 / sqrt(8.0) / std::fabs(omega.A());
+    }else{
+        SPDLOG_ERROR("Invalid omega: A == 0");
+    }
     SPDLOG_DEBUG("Shifting origin by x0 -= {}.", offset);
     origin[0] -= offset;
     x = x.array() + offset;    
@@ -140,6 +146,7 @@ CircleParams geometric_lm::estimate_circle(const Dataset& data, const CirclePara
                 // We are moving into a singularity in parameter space.
                 // Shift the origin and try again.
                 shift_origin(x, y, origin, omega);
+                mean_squared_error_derivatives(x, y, omega, mse, gradient, hessian);
                 continue;
             }
             double mse_new = mean_squared_error(x, y, omega_new);

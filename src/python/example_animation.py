@@ -69,8 +69,6 @@ def update(i):
         lm_mse.set_xdata(np.arange(0,i-3))
         lm_mse.set_ydata(trace.mse[0:i-3])
         return ax1, ax2, lm_circle
-    # line.set_ydata(x - 5 + i)
-    # ax.set_xlabel(label)
     return
 
 if __name__ == '__main__':
@@ -79,6 +77,7 @@ if __name__ == '__main__':
     anim = FuncAnimation(fig, update, frames=np.arange(0, trace.numiters+5), interval=2000)
     if len(sys.argv) > 1 and sys.argv[1] == 'save':
         anim.save('example_animation.gif', dpi=80, writer='imagemagick')
+        fig.savefig('example_animation.pdf', dpi=300, bbox_inches='tight')
     else:
         # plt.show() will just loop the animation forever.
         plt.show()

@@ -76,7 +76,8 @@
         "numericaldiff": "cpp",
         "openglsupport": "cpp",
         "specialfunctions": "cpp",
-        "splines": "cpp"
+        "splines": "cpp",
+        "c_interface.h": "c"
     },
     "C_Cpp.intelliSenseEngine": "Default",
     "files.watcherExclude": {

@@ -5,7 +5,7 @@ from math import pi, sin, cos, sqrt
 from random import uniform, gauss, seed
 import os
 from ctypes import cdll, c_int, c_double, pointer, POINTER
-libpath = os.path.join(os.path.dirname(__file__), '..', '..', 'build', 'libcircle_fit.so')
+libpath = os.path.join(os.path.dirname(__file__), '..', '..', 'build', 'libcircle_fit_dynamic.so')
 circle_fit_lib = cdll.LoadLibrary(libpath)
 
 def estimate_circle_taubin(x, y):

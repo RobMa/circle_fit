@@ -84,7 +84,7 @@ int estimate_circle_lm_trace(double x[], double y[], int length, double rxy_init
         return false;
     }
     SPDLOG_DEBUG("Writing data to output buffer, trace.size()={}...", trace.size());
-    for(int i=0; i<trace.size(); i++) {
+    for(size_t i=0; i<trace.size(); i++) {
         // SPDLOG_DEBUG("x");
         (*out_x)[i] = trace[i].rxy[1];
         // SPDLOG_DEBUG("y");

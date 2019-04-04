@@ -3,7 +3,8 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/include"
+                "${workspaceFolder}/include",
+                "/opt/matlab/R2018b/extern/include/"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang-8",
