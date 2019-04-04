@@ -5,10 +5,12 @@
 There is also a _Python_ and _MATLAB_ binding.
 The example below was generated with _Python_ and _Matplotlib_.
 See `src/python/example_animation.py`.
+
 ![](src/python/example_animation.gif "Circle Fitting example")
 
 Here is an example plotted from MATLAB.
 The corresponding code is in `src/matlab/example.m`.
+
 ![](src/matlab/example.png).
 
 ## Build instructions
