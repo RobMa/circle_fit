@@ -16,10 +16,11 @@ namespace circle_fit
  */
 inline CircleParams estimate_circle(const VecX& x, const VecX& y)
 {
-    Dataset data(x,y);
+    NormalizedDataset data(x,y);
+    
     CircleParams init = gwaf_taubin::estimate_circle(data);
     CircleParams est = geometric_lm::estimate_circle(data, init);
-    // circle_undo_normalization(data, est);
+    circle_undo_normalization(data, est);
     return est;
 }
 

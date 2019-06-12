@@ -3,7 +3,6 @@ project(circle_fit)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-add_compile_options(-Wall -Wpedantic -Werror -fPIC) # We need -fPIC for building dynamic librariers, e.g. for MATLAB.
 
 # Download and unpack external dependencies
 set(EXTERNAL_PROJECTS_DIR "${PROJECT_SOURCE_DIR}/extern")
@@ -18,14 +17,14 @@ include_directories(extern/eigen extern/spdlog/include)
 # Code Generation
 add_custom_command(
     OUTPUT ${PROJECT_SOURCE_DIR}/src/generated/lm_derivatives.hpp
-    COMMAND python3 src/python/generate_lm_derivatives.py
+    COMMAND python src/python/generate_lm_derivatives.py
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     DEPENDS src/generated/lm_derivatives.hpp.template src/python/generate_lm_derivatives.py src/python/codegenerator.py 
     COMMENT "Generating code for lm_derivates.cpp."
 )
 add_custom_command(
     OUTPUT ${PROJECT_SOURCE_DIR}/src/generated/Q3.hpp ${PROJECT_SOURCE_DIR}/src/generated/M_C.hpp
-    COMMAND python3 src/python/generate_taubin_determinant.py
+    COMMAND python src/python/generate_taubin_determinant.py
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     DEPENDS src/generated/Q3.hpp.template src/generated/M_C.hpp.template src/python/generate_taubin_determinant.py src/python/codegenerator.py 
     COMMENT "Generating code for Q3.hpp and M_C.hpp."
@@ -36,7 +35,7 @@ set(SPDLOG_ACTIVE_LEVEL "SPDLOG_LEVEL_OFF" CACHE STRING "Set the logging level (
 add_compile_options(-DSPDLOG_ACTIVE_LEVEL=${SPDLOG_ACTIVE_LEVEL})
 
 # Library
-add_compile_options(-fPIC)
+
 add_library(circle_fit STATIC
 include/circle_fit/numeric_types.h
 include/circle_fit/dataset.h
@@ -50,15 +49,25 @@ src/c_interface.cpp
 )
 set_property(SOURCE src/geo_lm.cpp APPEND PROPERTY OBJECT_DEPENDS ${PROJECT_SOURCE_DIR}/src/generated/lm_derivatives.hpp)
 set_property(SOURCE src/gwaf_taubin.cpp APPEND PROPERTY OBJECT_DEPENDS ${PROJECT_SOURCE_DIR}/src/generated/M_C.hpp ${PROJECT_SOURCE_DIR}/src/generated/Q3.hpp)
+set_target_properties(circle_fit PROPERTIES CMAKE_POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(circle_fit PRIVATE)
 target_include_directories(circle_fit PUBLIC include)
 
 # Also create a dynamic library (E.g. used by python), that contains the same functions.
-add_library(circle_fit_dynamic SHARED include/circle_fit/c_interface.h)
-# Make sure the entire circle_fit static library is inserted in the dynamic library.
-target_link_libraries(circle_fit_dynamic PUBLIC
--Wl,--whole-archive circle_fit -Wl,--no-whole-archive
+add_library(circle_fit_dynamic SHARED
+include/circle_fit/numeric_types.h
+include/circle_fit/dataset.h
+include/circle_fit/circle_params.h
+include/circle_fit/gwaf_taubin.h
+src/gwaf_taubin.cpp
+include/circle_fit/geo_lm.h
+src/geo_lm.cpp
+include/circle_fit/circle_fit.h
+src/c_interface.cpp
+include/circle_fit/c_interface.h
 )
+target_include_directories(circle_fit_dynamic PUBLIC include)
+
 
 set(WITH_TESTS "off" CACHE BOOL "Build tests (requires googletest and GTEST_DIR variable to be set)")
 if (WITH_TESTS)
@@ -89,43 +98,9 @@ if (BUILD_MEX)
     find_package(Matlab)
     # get_property(STATIC_LIB_NAME TARGET circle_fit PROPERTY OUTPUT_LOCATION)
     add_custom_target(circle_fit_mex ALL
-        COMMAND ${Matlab_ROOT_DIR}/bin/mex -R2018a -I${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src/matlab/mex/circle_fit.c libcircle_fit${CMAKE_STATIC_LIBRARY_SUFFIX}
-        COMMAND ${Matlab_ROOT_DIR}/bin/mex -R2018a -I${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src/matlab/mex/circle_fit_lm.c libcircle_fit${CMAKE_STATIC_LIBRARY_SUFFIX}
-        COMMAND ${Matlab_ROOT_DIR}/bin/mex -R2018a -I${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src/matlab/mex/circle_fit_taubin.c libcircle_fit${CMAKE_STATIC_LIBRARY_SUFFIX}
+        COMMAND ${Matlab_ROOT_DIR}/bin/mex -R2018a -I${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src/matlab/mex/circle_fit.c circle_fit${CMAKE_STATIC_LIBRARY_SUFFIX} -output circle_fit_combined
+        COMMAND ${Matlab_ROOT_DIR}/bin/mex -R2018a -I${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src/matlab/mex/circle_fit_lm.c circle_fit${CMAKE_STATIC_LIBRARY_SUFFIX}
+        COMMAND ${Matlab_ROOT_DIR}/bin/mex -R2018a -I${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src/matlab/mex/circle_fit_taubin.c circle_fit${CMAKE_STATIC_LIBRARY_SUFFIX}
         DEPENDS circle_fit
     )
-    # add_custom_target(circle_fit_mex
-    #     DEPENDS circle_fit.mexa64
-    # )
-    # add_dependencies(circle_fit_mex circle_fit.mexa64)
-    
-    # add_compile_options(-Wl,--version-script,/opt/matlab/R2018b/extern/lib/glnxa64/mexFunction.map)
-    # matlab_add_mex(
-    #     NAME circle_fit_mex
-    #     SHARED
-    #     SRC src/matlab/mex/circle_fit.c
-    #     OUTPUT_NAME circle_fit
-    #     #[DOCUMENTATION file.txt]
-    #     LINK_TO circle_fit mex mx
-        
-    # )
-    # matlab_add_mex(
-    #     NAME circle_lm_mex
-    #     SHARED
-    #     SRC src/matlab/mex/circle_fit_lm.c
-    #     OUTPUT_NAME circle_fit_lm
-    #     #[DOCUMENTATION file.txt]
-    #     LINK_TO circle_fit mex mx
-    # )
-    # matlab_add_mex(
-    #     NAME circle_fit_taubin_mex
-    #     SHARED
-    #     SRC src/matlab/mex/circle_fit_taubin.c
-    #     OUTPUT_NAME circle_fit_taubin
-    #     #[DOCUMENTATION file.txt]
-    #     LINK_TO circle_fit mex mx
-    # )
 endif()
-
-
-

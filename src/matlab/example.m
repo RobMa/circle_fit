@@ -10,7 +10,7 @@ scatter(x,y); %, 'LineStyle', 'none', 'Marker', '.')
 hold on
 plot([10,11],[-10,-10], 'Color', 'black', 'Marker', '*');
 viscircles([10,-10], 1, 'Color', 'black');
-rxy = circle_fit(x,y);
+rxy = circle_fit_combined(x,y);
 viscircles(rxy(2:3)', rxy(1), 'Color', 'red');
 plot([rxy(2),rxy(2)+rxy(1)],[rxy(3),rxy(3)], 'Marker', 'diamond', 'Color', 'red');
 rxy = circle_fit_taubin(x,y);
